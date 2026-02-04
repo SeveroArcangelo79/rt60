@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Reverberación RT60 - Borgoña Acoustics</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --cream-light: #FDF8F3; --cream: #F5EDE4; --cream-dark: #E8DDD0;
+            --sage-light: #C5D4C0; --sage: #9BB08F; --sage-dark: #7A9A6D;
+            --terracotta-light: #D4847C; --terracotta: #B85C50; --terracotta-dark: #8B3A30;
+            --wood-light: #D4B896; --wood: #A67B5B; --wood-dark: #6B4423;
+            --text-primary: #2C2420; --text-secondary: #5C544D; --text-muted: #8A817A;
+            --border: #D4C8BC;
+            --shadow-sm: 0 1px 3px rgba(44, 36, 32, 0.08);
+            --shadow-md: 0 4px 12px rgba(44, 36, 32, 0.12);
+            --shadow-lg: 0 8px 24px rgba(44, 36, 32, 0.16);
+            --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, var(--cream-light) 0%, var(--cream) 100%); color: var(--text-primary); line-height: 1.5; }
+        .app-container { display: grid; grid-template-rows: auto 1fr; grid-template-columns: 380px 1fr; height: 100vh; gap: 0; }
+        .header { grid-column: 1 / -1; background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-dark) 100%); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-md); z-index: 10; }
+        .logo-text h1 { font-size: 18px; font-weight: 700; color: var(--cream-light); }
+        .logo-text span { font-size: 11px; opacity: 0.85; color: var(--cream-light); }
+        .tabs { display: flex; gap: 4px; background: rgba(0,0,0,0.1); padding: 4px; border-radius: var(--radius-md); }
+        .tab { padding: 8px 16px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.85); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s ease; }
+        .tab.active { background: var(--cream-light); color: var(--terracotta-dark); }
+        .tab:hover:not(.active) { color: white; background: rgba(255,255,255,0.1); }
+        .btn { font-family: inherit; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); border: none; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 6px; }
+        .btn-secondary { background: rgba(255,255,255,0.15); color: var(--cream-light); border: 1px solid rgba(255,255,255,0.25); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+        .control-panel { background: var(--cream-light); border-right: 1px solid var(--border); padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        .panel-section { background: white; border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .panel-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--cream-dark); }
+        .panel-section-header svg { width: 16px; height: 16px; color: var(--terracotta); flex-shrink: 0; }
+        .panel-section-header h3 { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .form-row { display: grid; grid-template-columns: 1fr 90px; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .form-row label { font-size: 12px; color: var(--text-secondary); }
+        .form-row input[type="number"] { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--cream-light); color: var(--text-primary); text-align: right; transition: all 0.2s ease; width: 100%; }
+        .form-row input:focus { outline: none; border-color: var(--sage); background: white; box-shadow: 0 0 0 3px rgba(155, 176, 143, 0.2); }
+        .form-row-spaced { margin-top: 15px; }
+        .slider-row input[type="range"] { width: 100%; height: 6px; -webkit-appearance: none; background: var(--cream-dark); border-radius: 3px; outline: none; margin-top: 4px; }
+        .slider-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--terracotta); border-radius: 50%; cursor: pointer; box-shadow: var(--shadow-sm); }
+        .results-grid { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+        .result-card { background: linear-gradient(135deg, var(--sage-light) 0%, var(--sage) 100%); border-radius: var(--radius-md); padding: 10px 14px; text-align: center; }
+        .result-card.highlight { background: linear-gradient(135deg, var(--terracotta-light) 0%, var(--terracotta) 100%); grid-column: 1 / -1; }
+        .result-label { font-size: 10px; font-weight: 500; color: white; opacity: 0.9; text-transform: uppercase; display: block; }
+        .result-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: white; }
+        .main-content { background: var(--cream); display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .tab-content { display: none; padding: 20px; overflow-y: auto; height: 100%; gap: 20px; flex-direction: column; }
+        .tab-content.active { display: flex; }
+        .visualization-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex: 1; min-height: 300px; }
+        .formula-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        #tab-theory .info-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .chart-container, .canvas-container { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; }
+        .canvas-container { background: var(--cream-light); }
+        .chart-header, .canvas-header { margin-bottom: 12px; }
+        .chart-title, .canvas-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .chart-subtitle, .canvas-subtitle { font-size: 11px; color: var(--text-muted); }
+        .chart-wrapper, .canvas-wrapper { position: relative; flex: 1; min-height: 200px; cursor: grab; }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .canvas-interaction-overlay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(44, 36, 32, 0.8); color: white; padding: 6px 12px; border-radius: 15px; font-size: 11px; font-weight: 500; pointer-events: none; transition: opacity 0.5s ease 2s; opacity: 1; }
+        .canvas-interaction-overlay.fade-out { opacity: 0; }
+        .canvas-controls { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+        .canvas-btn { background: white; border: 1px solid var(--border); padding: 5px 10px; font-size: 11px; border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s ease; }
+        .canvas-btn:hover { background: var(--cream); border-color: var(--terracotta); }
+        .formula-section { background: white; border-radius: var(--radius-md); padding: 14px 18px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .formula-header { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .formula-content { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--text-primary); text-align: center; padding: 12px; background: var(--cream-light); border-radius: var(--radius-sm); border: 1px solid var(--cream-dark); margin: 12px 0; }
+        .formula-variables { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+        .formula-var { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+        .formula-var span { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--terracotta); min-width: 60px; display: inline-block; }
+        .info-card { background: white; border-radius: var(--radius-md); padding: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        .info-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--terracotta-dark); }
+        .info-card p, .info-card li { font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+        .info-card ul { margin-left: 20px; margin-top: 8px; list-style-type: square; }
+        .info-card li::marker { color: var(--terracotta); }
+        .info-card code { font-family: 'JetBrains Mono'; background: var(--cream-light); border: 1px solid var(--cream-dark); padding: 2px 5px; border-radius: 4px; font-size: 11px; }
+        .absorption-config { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .surface-group { background: white; border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .surface-input { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .surface-input label { font-size: 12px; }
+        .surface-input input { width: 60px; text-align: center; }
+        .material-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .material-btn { font-size: 10px; padding: 4px 8px; background: var(--cream-light); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: 0.2s ease; }
+        .material-btn:hover { background: var(--cream-dark); }
+        .absorption-mode-selector { display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px; background: var(--cream-light); }
+        .absorption-mode-selector span { cursor: pointer; padding: 4px 12px; font-size: 12px; font-weight: 500; color: var(--text-secondary); border-radius: var(--radius-sm); transition: 0.3s ease; }
+        .absorption-mode-selector span.active { background: var(--terracotta-dark); color: white; box-shadow: var(--shadow-sm); }
+        .bolt-card { background: white; border-radius: var(--radius-md); padding: 14px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        .bolt-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .bolt-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .bolt-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; }
+        .bolt-badge.optimal { background: var(--sage-light); color: var(--sage-dark); }
+        .bolt-badge.acceptable { background: #FFF3CD; color: #856404; }
+        .bolt-badge.poor { background: #F8D7DA; color: #721C24; }
+        .bolt-ratio { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--text-primary); text-align: center; padding: 10px; }
+        .bolt-note { font-size: 10px; color: var(--text-muted); text-align: center; }
+        @media (max-width: 1200px) { .visualization-container, .formula-container { grid-template-columns: 1fr; } .visualization-container { min-height: 600px; } }
+        @media (max-width: 1000px) { body { overflow: auto; } .app-container { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; height: auto; } .control-panel { border-right: none; border-bottom: 1px solid var(--border); } }
+        @media (max-width: 768px) { .header { flex-direction: column; gap: 12px; padding: 12px 16px; } .tabs { width: 100%; justify-content: center; } .tab-content { padding: 12px; } .absorption-config { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo-text"><h1>Calculadora de Reverberación</h1><span>Basado en Master Handbook of Acoustics</span></div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('config')">Resultados y Visualización</button>
+                <button class="tab" onclick="switchTab('surfaces')">Detalles de Superficies</button>
+                <button class="tab" onclick="switchTab('theory')">Guía Teórica</button>
+            </div>
+            <div class="header-actions"><button class="btn btn-secondary" onclick="resetDefaults()">Reiniciar</button></div>
+        </header>
+        <aside class="control-panel">
+            <section class="panel-section">
+                <div class="panel-section-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <h3>Dimensiones del Recinto (metros)</h3>
+                </div>
+                <div class="form-row"><label>Largo (L)</label><input type="number" id="length" value="7.10" min="2" max="50" step="0.1"></div>
+                <div class="slider-row"><input type="range" id="lengthSlider" min="2" max="50" value="7.10" step="0.1"></div>
+                <div class="form-row form-row-spaced"><label>Ancho (W)</label><input type="number" id="width" value="4.88" min="2" max="50" step="0.1"></div>
+                <div class="slider-row"><input type="range" id="widthSlider" min="2" max="50" value="4.88" step="0.1"></div>
+                <div class="form-row form-row-spaced"><label>Alto (H)</label><input type="number" id="height" value="3.05" min="2" max="15" step="0.1"></div>
+                <div class="slider-row"><input type="range" id="heightSlider" min="2" max="15" value="3.05" step="0.1"></div>
+            </section>
+            <section class="panel-section bolt-card">
+                <div class="bolt-header">
+                    <span class="bolt-title">Proporción (Bolt)</span>
+                    <span class="bolt-badge optimal" id="boltBadge">Óptima</span>
+                </div>
+                <div class="bolt-ratio" id="boltRatio">1.00 : 1.33 : 1.67</div>
+                <div class="bolt-note" id="boltNote">Cercano a Bolt B. Distribución modal óptima.</div>
+            </section>
+            <section class="panel-section">
+                <div class="panel-section-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 12.94 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"></path><path d="M10 2c1 .5 2 2 2 5"></path></svg>
+                    <h3>Coeficiente de Absorción (α)</h3>
+                </div>
+                <div class="absorption-mode-selector">
+                    <span id="mode-avg" onclick="toggleAbsorptionMode('avg')">Promedio</span>
+                    <span id="mode-surface" onclick="toggleAbsorptionMode('surface')">Por Superficie</span>
+                </div>
+                <div id="avgAbsorption" style="margin-top: 10px;">
+                    <div class="form-row"><label>α Promedio</label><input type="number" id="alpha_avg" value="0.20" min="0.01" max="0.99" step="0.01"></div>
+                    <div class="slider-row"><input type="range" id="alpha_avg_slider" min="0.01" max="0.99" value="0.20" step="0.01"></div>
+                </div>
+                <p id="surfaceAbsorptionMsg" style="font-size: 11px; color: var(--text-muted); margin-top: 10px; text-align: center; display: none;">Configure los coeficientes en la pestaña<br>"Detalles de Superficies".</p>
+            </section>
+            <section class="panel-section">
+                <div class="panel-section-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+                    <h3>Resultados RT60 @ 500 Hz</h3>
+                </div>
+                <div class="results-grid">
+                    <div class="result-card"><span class="result-label">Volumen (V)</span><span class="result-value" id="volumeValue">105 m³</span></div>
+                    <div class="result-card"><span class="result-label">Área (S)</span><span class="result-value" id="areaValue">141 m²</span></div>
+                    <div class="result-card highlight"><span class="result-label">α Promedio Efectivo</span><span class="result-value" id="alphaAvgValue">0.20</span></div>
+                    <div class="result-card"><span class="result-label">RT60 Sabine</span><span class="result-value" id="rt60SabineValue">0.57 s</span></div>
+                    <div class="result-card"><span class="result-label">RT60 Eyring</span><span class="result-value" id="rt60EyringValue">0.51 s</span></div>
+                </div>
+            </section>
+        </aside>
+        <main class="main-content">
+            <div class="tab-content active" id="tab-config">
+                <div class="visualization-container">
+                    <div class="canvas-container">
+                        <div class="canvas-header"><div class="canvas-title">Visualización del Recinto</div><div class="canvas-subtitle">Modelo 3D Interactivo</div></div>
+                        <div class="canvas-wrapper" id="roomCanvasContainer">
+                            <div id="interaction-overlay" class="canvas-interaction-overlay">Arrastra para rotar · Scroll para zoom</div>
+                            <div class="canvas-controls">
+                                <button class="canvas-btn" id="auto-rotate-btn">Auto-Rotar</button>
+                                <button class="canvas-btn" id="reset-view-btn">Reset Vista</button>
+                                <button class="canvas-btn" id="toggle-axes-btn">Ejes XYZ</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header"><div><div class="chart-title">RT60 vs Frecuencia</div><div class="chart-subtitle">Comparativa Sabine vs Eyring-Norris</div></div></div>
+                        <div class="chart-wrapper"><canvas id="rt60Chart"></canvas></div>
+                    </div>
+                </div>
+                <div class="formula-container">
+                    <div class="formula-section">
+                        <div class="formula-header">Fórmula de Sabine (Everest & Pohlmann, 2009, p. 155)</div>
+                        <div class="formula-content">RT60 = (0.161 × V) / A</div>
+                        <div class="formula-variables">
+                            <p class="formula-var"><span>V:</span> Volumen del recinto (m³)</p>
+                            <p class="formula-var"><span>A:</span> Absorción total (Sabins Métricos) = Σ(Sᵢ × αᵢ)</p>
+                        </div>
+                    </div>
+                    <div class="formula-section">
+                        <div class="formula-header">Fórmula de Eyring-Norris (Everest & Pohlmann, 2009, p. 157)</div>
+                        <div class="formula-content">RT60 = (0.161 × V) / [−S × ln(1 − α̅)]</div>
+                        <div class="formula-variables">
+                            <p class="formula-var"><span>S:</span> Área superficial total (m²)</p>
+                            <p class="formula-var"><span>α̅:</span> Coeficiente de absorción promedio</p>
+                            <p class="formula-var"><span>ln:</span> Logaritmo Natural</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-surfaces">
+                <div class="absorption-config">
+                    <div class="surface-group">
+                        <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--terracotta-dark);">Superficies (Paredes)</h4>
+                        <div class="surface-input"><label>Pared Frontal/Trasera (α)</label><input type="number" data-surface="walls_front_back" value="0.05" min="0" max="1" step="0.01"></div>
+                        <div class="surface-input"><label>Paredes Laterales (α)</label><input type="number" data-surface="walls_sides" value="0.05" min="0" max="1" step="0.01"></div>
+                    </div>
+                    <div class="surface-group">
+                        <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--terracotta-dark);">Superficies (Suelo y Techo)</h4>
+                        <div class="surface-input"><label>Suelo (α)</label><input type="number" data-surface="floor" value="0.02" min="0" max="1" step="0.01"></div>
+                        <div class="surface-input"><label>Techo (α)</label><input type="number" data-surface="ceiling" value="0.05" min="0" max="1" step="0.01"></div>
+                    </div>
+                </div>
+                <div class="formula-section" style="margin-top: 20px;">
+                    <div class="formula-header">Presets de Materiales (α @ 500 Hz)</div>
+                    <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 10px;">Haz clic para aplicar un valor típico a la última superficie modificada.</p>
+                    <div class="material-buttons">
+                        <button class="material-btn" data-alpha="0.02">Hormigón</button><button class="material-btn" data-alpha="0.06">Yeso</button><button class="material-btn" data-alpha="0.04">Vidrio</button><button class="material-btn" data-alpha="0.10">Madera</button><button class="material-btn" data-alpha="0.30">Alfombra delgada</button><button class="material-btn" data-alpha="0.60">Alfombra gruesa</button><button class="material-btn" data-alpha="0.78">Baldosa acústica (3/4")</button><button class="material-btn" data-alpha="0.85">Lana de roca (5cm)</button>
+                    </div>
+                    <p style="font-size: 10px; margin-top: 10px; color: var(--text-muted);">Valores de referencia del "Master Handbook of Acoustics", Apéndice.</p>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-theory">
+                <div class="info-container">
+                    <div class="info-card"><h4>Crecimiento y Decaimiento del Sonido</h4><p>Cuando una fuente se activa en un recinto, el sonido crece hasta un estado de equilibrio donde la energía emitida iguala a la absorbida. Al cesar la fuente, la energía decae exponencialmente. Este decaimiento es la <strong>reverberación</strong>, un componente crucial del "carácter" de un espacio. (p. 151-153)</p></div>
+                    <div class="info-card"><h4>Sabine vs. Eyring-Norris</h4><p>La fórmula de <strong>Sabine</strong> es precisa para salas "vivas" con absorción distribuida (α &lt; 0.25). Para espacios más "muertos" como estudios, la fórmula de <strong>Eyring-Norris</strong> es más exacta al considerar que una onda reflejada tiene menos probabilidad de impactar una superficie ya absorbida. (p. 157)</p></div>
+                    <div class="info-card"><h4>Densidad Modal y Coloración</h4><p>En salas pequeñas, las resonancias (modos) de baja frecuencia están muy espaciadas, creando picos y valles que "colorean" el sonido. Una sala grande tiene mayor densidad modal, suavizando la respuesta. Por debajo de ~300 Hz (Región B), los modos dominan la acústica de salas pequeñas. (p. 229, 244-245)</p></div>
+                    <div class="info-card"><h4>Proporciones de Bolt y Modos Axiales</h4><p>Deben evitarse dimensiones que sean múltiplos enteros entre sí (ej. una sala cúbica). Esto causa que los modos axiales se superpongan (degeneración), creando resonancias extremas. Las proporciones de Bolt (ej. 1:1.28:1.54) buscan una distribución de modos más uniforme. (p. 247-248)</p></div>
+                    <div class="info-card"><h4>Tiempos de Reverberación (RT60) Óptimos</h4><p>El RT60 ideal depende del volumen y uso del recinto:</p><ul><li><strong>Locución/Salas de Control:</strong> <code>0.2s - 0.5s</code></li><li><strong>Música de Cámara:</strong> <code>0.8s - 1.4s</code></li><li><strong>Salas Sinfónicas:</strong> <code>1.8s - 2.2s</code></li></ul><p>La inteligibilidad de la palabra exige tiempos cortos; la música se enriquece con la "envolvencia" de tiempos más largos. (p. 170-171)</p></div>
+                    <div class="info-card"><h4>Bass Ratio: La "Calidez" Acústica</h4><p>El "Bass Ratio" (BR) es el RT60 en bajas frecuencias (promedio 125-250 Hz) dividido por el RT60 en medias (500-1k Hz). Un BR &gt; 1.1 indica una reverberación más larga en graves, percibida como "calidez", deseable para música orquestal. Para locución, se prefiere un BR cercano a 1.0. (p. 173)</p></div>
+                    <div class="info-card"><h4>Absorción del Aire</h4><p>En salas grandes, el paso del sonido por el aire añade absorción efectiva, reduciendo el RT60 en altas frecuencias (&gt; 2 kHz). Se modela añadiendo el término <code>4mV</code> al denominador de las ecuaciones. En salas pequeñas, este efecto es despreciable. (p. 157-158)</p></div>
+                    <div class="info-card"><h4>Elevación de Graves (Bass Rise)</h4><p>En estudios de voz, se busca un RT60 uniforme en todo el espectro. Sin embargo, la BBC encontró que se tolera cierta elevación en graves: hasta 80% más en 63 Hz y 20% más en 125 Hz respecto al valor de referencia a 1 kHz. (p. 172-173)</p></div>
+                    <div class="info-card"><h4>Initial Time-Delay Gap (ITDG)</h4><p>El ITDG es el tiempo entre el sonido directo y la primera reflexión significativa. Un ITDG corto (&lt; 20 ms) aumenta la sensación de "intimidad" acústica. Salas de concierto íntimas tienen ITDG de 12-20 ms; salas grandes, 30-50 ms. (p. 173-174)</p></div>
+                    <div class="info-card"><h4>Efecto Precedencia (Ley de la Primera Onda)</h4><p>El sistema auditivo localiza el sonido basándose en la primera llegada. Reflexiones que llegan dentro de 30-50 ms se fusionan perceptualmente con el sonido directo, aumentando la sonoridad percibida sin crear eco. Este fenómeno es crucial en el diseño de salas. (p. 59-61)</p></div>
+                    <div class="info-card"><h4>Distribución de Absorbentes</h4><p>La ubicación del tratamiento acústico afecta significativamente el resultado. Absorbentes distribuidos uniformemente mejoran la difusión del campo sonoro. Concentrar absorbentes en una zona puede crear gradientes de decaimiento y "puntos muertos". (p. 131)</p></div>
+                    <div class="info-card"><h4>Medición del RT60</h4><p>El RT60 se mide excitando la sala con ruido rosa o un impulso, y registrando el decaimiento. Se evalúa el tiempo para una caída de 60 dB, aunque frecuentemente se extrapola desde T20 o T30 (caídas de 20 o 30 dB) debido al ruido de fondo. (p. 158-160)</p></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+        const SABINE_CONSTANT = 0.161;
+        const HUMAN_HEIGHT = 1.75;
+        const BOLT_RATIOS = [
+            { name: 'Bolt A', ratios: [1.00, 1.14, 1.39], inRange: false },
+            { name: 'Bolt B', ratios: [1.00, 1.28, 1.54], inRange: true },
+            { name: 'Bolt C', ratios: [1.00, 1.60, 2.33], inRange: true },
+            { name: 'Bolt D', ratios: [1.00, 1.40, 1.90], inRange: true },
+            { name: 'Sepmeyer', ratios: [1.00, 1.30, 1.90], inRange: false },
+            { name: 'Volkmann', ratios: [1.00, 1.50, 2.50], inRange: true },
+            { name: 'Boner', ratios: [1.00, 1.26, 1.59], inRange: true }
+        ];
+        const OCTAVE_BANDS = [125, 250, 500, 1000, 2000, 4000];
+        
+        let renderer, scene, camera, roomGroup, isAutoRotating = false, axesHelper, rt60Chart;
+        
+        const ui = {
+            length: document.getElementById('length'),
+            width: document.getElementById('width'),
+            height: document.getElementById('height'),
+            lengthSlider: document.getElementById('lengthSlider'),
+            widthSlider: document.getElementById('widthSlider'),
+            heightSlider: document.getElementById('heightSlider'),
+            absorptionMode: { avg: document.getElementById('mode-avg'), surface: document.getElementById('mode-surface') },
+            avgAbsorption: document.getElementById('avgAbsorption'),
+            surfaceAbsorptionMsg: document.getElementById('surfaceAbsorptionMsg'),
+            alpha_avg: document.getElementById('alpha_avg'),
+            alpha_avg_slider: document.getElementById('alpha_avg_slider'),
+            volumeValue: document.getElementById('volumeValue'),
+            areaValue: document.getElementById('areaValue'),
+            alphaAvgValue: document.getElementById('alphaAvgValue'),
+            rt60SabineValue: document.getElementById('rt60SabineValue'),
+            rt60EyringValue: document.getElementById('rt60EyringValue'),
+            roomCanvasContainer: document.getElementById('roomCanvasContainer'),
+            boltRatio: document.getElementById('boltRatio'),
+            boltBadge: document.getElementById('boltBadge'),
+            boltNote: document.getElementById('boltNote')
+        };
+        
+        const surfaceInputs = {
+            walls_front_back: document.querySelector('[data-surface="walls_front_back"]'),
+            walls_sides: document.querySelector('[data-surface="walls_sides"]'),
+            floor: document.querySelector('[data-surface="floor"]'),
+            ceiling: document.querySelector('[data-surface="ceiling"]')
+        };
+        
+        let lastFocusedSurfaceInput = surfaceInputs.walls_front_back;
+        
+        function getDimensions() {
+            const L = parseFloat(ui.length.value) || 7.1;
+            const W = parseFloat(ui.width.value) || 4.88;
+            const H = parseFloat(ui.height.value) || 3.05;
+            const V = L * W * H;
+            const S_walls_front_back = 2 * W * H;
+            const S_walls_sides = 2 * L * H;
+            const S_floor = L * W;
+            const S_ceiling = L * W;
+            const S_total = S_walls_front_back + S_walls_sides + S_floor + S_ceiling;
+            return { L, W, H, V, S_walls_front_back, S_walls_sides, S_floor, S_ceiling, S_total };
+        }
+        
+        function getAlpha(f = 500) {
+            const dims = getDimensions();
+            if (ui.absorptionMode.surface.classList.contains('active')) {
+                const alpha_vals = {
+                    walls_front_back: parseFloat(surfaceInputs.walls_front_back.value) || 0.05,
+                    walls_sides: parseFloat(surfaceInputs.walls_sides.value) || 0.05,
+                    floor: parseFloat(surfaceInputs.floor.value) || 0.02,
+                    ceiling: parseFloat(surfaceInputs.ceiling.value) || 0.05
+                };
+                const A = alpha_vals.walls_front_back * dims.S_walls_front_back + alpha_vals.walls_sides * dims.S_walls_sides + alpha_vals.floor * dims.S_floor + alpha_vals.ceiling * dims.S_ceiling;
+                const alpha_avg = dims.S_total > 0 ? A / dims.S_total : 0;
+                return { A, alpha_avg };
+            } else {
+                const alpha_avg = parseFloat(ui.alpha_avg.value) || 0.2;
+                const A = alpha_avg * dims.S_total;
+                return { A, alpha_avg };
+            }
+        }
+        
+        function calculateSabine(V, A) {
+            return (A > 0) ? (SABINE_CONSTANT * V) / A : Infinity;
+        }
+        
+        function calculateEyring(V, S, alpha_avg) {
+            if (alpha_avg >= 1) return 0;
+            return (alpha_avg > 0) ? (SABINE_CONSTANT * V) / (-S * Math.log(1 - alpha_avg)) : Infinity;
+        }
+        
+        function calculateBoltRatio() {
+            const dims = getDimensions();
+            const sorted = [dims.H, dims.W, dims.L].sort((a, b) => a - b);
+            const base = sorted[0];
+            const r1 = 1.00;
+            const r2 = (sorted[1] / base).toFixed(2);
+            const r3 = (sorted[2] / base).toFixed(2);
+            
+            ui.boltRatio.textContent = `${r1.toFixed(2)} : ${r2} : ${r3}`;
+            
+            let bestMatch = null;
+            let minDistance = Infinity;
+            
+            for (const bolt of BOLT_RATIOS) {
+                const dist = Math.abs(bolt.ratios[1] - parseFloat(r2)) + Math.abs(bolt.ratios[2] - parseFloat(r3));
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    bestMatch = bolt;
+                }
+            }
+            
+            if (minDistance < 0.15 && bestMatch.inRange) {
+                ui.boltBadge.textContent = 'Óptima';
+                ui.boltBadge.className = 'bolt-badge optimal';
+                ui.boltNote.textContent = `Cercano a ${bestMatch.name}. Distribución modal óptima.`;
+            } else if (minDistance < 0.35) {
+                ui.boltBadge.textContent = 'Aceptable';
+                ui.boltBadge.className = 'bolt-badge acceptable';
+                ui.boltNote.textContent = `Distribución modal aceptable. Verificar modos axiales.`;
+            } else {
+                ui.boltBadge.textContent = 'Revisar';
+                ui.boltBadge.className = 'bolt-badge poor';
+                ui.boltNote.textContent = `Proporciones fuera del rango de Bolt. Posibles problemas modales.`;
+            }
+        }
+        
+        function updateAll() {
+            const dims = getDimensions();
+            const { A, alpha_avg } = getAlpha(500);
+            ui.volumeValue.textContent = `${dims.V.toFixed(1)} m³`;
+            ui.areaValue.textContent = `${dims.S_total.toFixed(1)} m²`;
+            ui.alphaAvgValue.textContent = alpha_avg.toFixed(2);
+            ui.rt60SabineValue.textContent = `${calculateSabine(dims.V, A).toFixed(2)} s`;
+            ui.rt60EyringValue.textContent = `${calculateEyring(dims.V, dims.S_total, alpha_avg).toFixed(2)} s`;
+            calculateBoltRatio();
+            if (rt60Chart) updateChart();
+            if (scene) update3DRoom();
+        }
+        
+        function toggleAbsorptionMode(mode) {
+            const isSurfaceMode = mode === 'surface';
+            ui.absorptionMode.avg.classList.toggle('active', !isSurfaceMode);
+            ui.absorptionMode.surface.classList.toggle('active', isSurfaceMode);
+            ui.avgAbsorption.style.display = isSurfaceMode ? 'none' : 'block';
+            ui.surfaceAbsorptionMsg.style.display = isSurfaceMode ? 'block' : 'none';
+            if (isSurfaceMode) switchTab('surfaces');
+            updateAll();
+        }
+        
+        function initChart() {
+            const ctx = document.getElementById('rt60Chart').getContext('2d');
+            const rootStyles = getComputedStyle(document.documentElement);
+            const terracottaColor = rootStyles.getPropertyValue('--terracotta').trim();
+            const sageColor = rootStyles.getPropertyValue('--sage-dark').trim();
+            const textColor = rootStyles.getPropertyValue('--text-secondary').trim();
+            rt60Chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: OCTAVE_BANDS,
+                    datasets: [
+                        { label: 'Sabine', data: [], borderColor: terracottaColor, backgroundColor: terracottaColor, fill: false, tension: 0.2, borderWidth: 2.5, pointBackgroundColor: terracottaColor, pointBorderColor: 'white', pointRadius: 5, pointHoverRadius: 7 },
+                        { label: 'Eyring-Norris', data: [], borderColor: sageColor, backgroundColor: sageColor, fill: false, tension: 0.2, borderWidth: 2.5, pointBackgroundColor: sageColor, pointBorderColor: 'white', pointRadius: 5, pointHoverRadius: 7 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Frecuencia (Hz)', color: textColor }, ticks: { color: textColor } },
+                        y: { title: { display: true, text: 'RT60 (s)', color: textColor }, min: 0, ticks: { color: textColor } }
+                    },
+                    plugins: { legend: { display: true, position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 6, padding: 20, color: textColor } } }
+                }
+            });
+        }
+        
+        function updateChart() {
+            const dims = getDimensions();
+            const sabineData = OCTAVE_BANDS.map(f => calculateSabine(dims.V, getAlpha(f).A));
+            const eyringData = OCTAVE_BANDS.map(f => calculateEyring(dims.V, dims.S_total, getAlpha(f).alpha_avg));
+            rt60Chart.data.datasets[0].data = sabineData;
+            rt60Chart.data.datasets[1].data = eyringData;
+            rt60Chart.update();
+        }
+        
+        function init3DRoom() {
+            const container = ui.roomCanvasContainer;
+            if (!container) return;
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--cream-light').trim());
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(5, 10, 7.5);
+            scene.add(dirLight);
+            axesHelper = new THREE.AxesHelper(5);
+            axesHelper.visible = false;
+            scene.add(axesHelper);
+            
+            let isDragging = false;
+            let previousMouse = { x: 0, y: 0 };
+            
+            const onPointerDown = (e) => { isAutoRotating = false; isDragging = true; previousMouse.x = e.clientX; previousMouse.y = e.clientY; container.style.cursor = 'grabbing'; };
+            const onPointerUp = () => { isDragging = false; container.style.cursor = 'grab'; };
+            const onPointerMove = (e) => {
+                if (!isDragging || !roomGroup) return;
+                const deltaMove = { x: e.clientX - previousMouse.x, y: e.clientY - previousMouse.y };
+                roomGroup.rotation.y += deltaMove.x * 0.007;
+                roomGroup.rotation.x += deltaMove.y * 0.007;
+                previousMouse = { x: e.clientX, y: e.clientY };
+            };
+            const onWheel = (e) => {
+                e.preventDefault();
+                isAutoRotating = false;
+                camera.position.z += e.deltaY * 0.01;
+                const maxDim = Math.max(getDimensions().L, getDimensions().W, getDimensions().H);
+                camera.position.z = Math.max(maxDim * 0.8, Math.min(maxDim * 4, camera.position.z));
+            };
+            
+            container.addEventListener('pointerdown', onPointerDown);
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointerleave', onPointerUp);
+            container.addEventListener('pointermove', onPointerMove);
+            container.addEventListener('wheel', onWheel, { passive: false });
+            
+            document.getElementById('auto-rotate-btn').onclick = () => isAutoRotating = !isAutoRotating;
+            document.getElementById('reset-view-btn').onclick = () => { if (roomGroup) { roomGroup.rotation.set(0.3, -0.5, 0); isAutoRotating = false; } update3DRoom(); };
+            document.getElementById('toggle-axes-btn').onclick = () => axesHelper.visible = !axesHelper.visible;
+            
+            animate();
+            setTimeout(() => document.getElementById('interaction-overlay').classList.add('fade-out'), 500);
+        }
+        
+        function update3DRoom() {
+            if (roomGroup) scene.remove(roomGroup);
+            const { L, W, H } = getDimensions();
+            roomGroup = new THREE.Group();
+            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(L, H, W));
+            roomGroup.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--terracotta-dark').trim()) })));
+            const grid = new THREE.GridHelper(Math.max(L, W) * 1.5, 10, new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--cream-dark').trim()), new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--cream-dark').trim()));
+            grid.position.y = -H / 2;
+            roomGroup.add(grid);
+            const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(L, W), new THREE.MeshBasicMaterial({ color: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--cream-dark').trim()), opacity: 0.1, transparent: true }));
+            floorPlane.rotation.x = -Math.PI / 2;
+            floorPlane.position.y = -H / 2;
+            roomGroup.add(floorPlane);
+            const bodyGeo = new THREE.CylinderGeometry(0.18, 0.1, HUMAN_HEIGHT - 0.24, 8);
+            const headGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const humanMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--sage').trim()) });
+            const body = new THREE.Mesh(bodyGeo, humanMat);
+            const head = new THREE.Mesh(headGeo, humanMat);
+            head.position.y = (HUMAN_HEIGHT - 0.24) / 2 + 0.12;
+            const figure = new THREE.Group();
+            figure.add(body, head);
+            figure.position.y = -H / 2 + (HUMAN_HEIGHT - 0.24) / 2;
+            roomGroup.add(figure);
+            roomGroup.rotation.set(0.3, -0.5, 0);
+            scene.add(roomGroup);
+            const maxDim = Math.max(L, W, H);
+            camera.position.set(maxDim, maxDim * 0.7, maxDim * 2);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isAutoRotating && roomGroup) roomGroup.rotation.y += 0.002;
+            if (renderer) renderer.render(scene, camera);
+        }
+        
+        function resetDefaults() {
+            ui.length.value = 7.10;
+            ui.width.value = 4.88;
+            ui.height.value = 3.05;
+            ui.alpha_avg.value = 0.20;
+            Object.values(surfaceInputs).forEach(input => input.value = 0.05);
+            surfaceInputs.floor.value = 0.02;
+            syncSlidersToInputs();
+            toggleAbsorptionMode('avg');
+        }
+        
+        function syncSlidersToInputs() {
+            ui.lengthSlider.value = ui.length.value;
+            ui.widthSlider.value = ui.width.value;
+            ui.heightSlider.value = ui.height.value;
+            ui.alpha_avg_slider.value = ui.alpha_avg.value;
+        }
+        
+        function setupEventListeners() {
+            const inputsToSync = [
+                { i: ui.length, s: ui.lengthSlider },
+                { i: ui.width, s: ui.widthSlider },
+                { i: ui.height, s: ui.heightSlider },
+                { i: ui.alpha_avg, s: ui.alpha_avg_slider }
+            ];
+            inputsToSync.forEach(({ i, s }) => {
+                i.addEventListener('input', () => { s.value = i.value; updateAll(); });
+                s.addEventListener('input', () => { i.value = s.value; updateAll(); });
+            });
+            Object.values(surfaceInputs).forEach(input => {
+                input.addEventListener('input', updateAll);
+                input.addEventListener('focus', () => lastFocusedSurfaceInput = input);
+            });
+            document.querySelectorAll('.material-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const target = lastFocusedSurfaceInput || surfaceInputs.walls_front_back;
+                    target.value = button.dataset.alpha;
+                    updateAll();
+                });
+            });
+            window.addEventListener('resize', () => {
+                if (renderer) {
+                    const container = ui.roomCanvasContainer;
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+                if (rt60Chart) rt60Chart.resize();
+            });
+        }
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+            if (tabId === 'config') {
+                setTimeout(() => {
+                    if (rt60Chart) rt60Chart.resize();
+                    if (renderer) {
+                        const container = ui.roomCanvasContainer;
+                        renderer.setSize(container.clientWidth, container.clientHeight);
+                        camera.aspect = container.clientWidth / container.clientHeight;
+                        camera.updateProjectionMatrix();
+                    }
+                }, 10);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            initChart();
+            init3DRoom();
+            updateAll();
+            toggleAbsorptionMode('avg');
+        });
+    </script>
+</body>
+</html>
